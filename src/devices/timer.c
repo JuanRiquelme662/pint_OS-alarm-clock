@@ -99,11 +99,22 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
+  //representa a thread que vai ser colocada para dormir
+  struct threads_dormindo thread_dormindo;
+  int64_t tempo_total;
   int64_t start = timer_ticks ();
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  ASSERT (intr_get_level () == INTR_ON); 
+
+  tempo_total = start + ticks;
+
+  //vai dar o tempo que a thread precisa acordar, como se colocasse um "depertador"
+  thread_dormindo.hora_de_acordar = tempo_total;
+  sema_init(&thread_dormindo.semaforo, 0);
+
+  //vou chamar a funcao list_push_back para colocar a thread no final da lista de threads que vao dormir
+  list_push_back(&lista_de_dormindo, &thread_dormindo.elemento);
+  sema_down(&thread_dormindo.semaforo);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
