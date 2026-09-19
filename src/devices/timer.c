@@ -45,6 +45,8 @@ static void real_time_delay (int64_t num, int32_t denom);
 void
 timer_init (void) 
 {
+  //a funcao timer_interrupt e pode ser chamada a qualquer momento, entao a lista deve ser inicializada antes de qualquer coisa
+  list_init (&lista_de_dormindo);
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
@@ -96,6 +98,7 @@ timer_elapsed (int64_t then)
 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
+//funcao alvo a emplementacao
 void
 timer_sleep (int64_t ticks) 
 {
@@ -188,10 +191,37 @@ timer_print_stats (void)
 }
 
 /* Timer interrupt handler. */
+//segunda funcao alvo, responsavel por acordar as threads que estao dormindo
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  //escrevo o codigo aqui no meio, porque o thread ticks vai ser responsavel por designar a funcao da thread apois ela acordar, e o ticks anterior e oquer vai atualizar o estado do sistema
+ 
+  struct list_elem *aux;
+  //checa se a lista esta vazia para evitar erro de segmentacao, se nao estiver vazia, pega o primeiro elemento da lista
+  if (!list_empty(&lista_de_dormindo)) {
+    aux = list_front(&lista_de_dormindo);
+  }else{
+    aux = list_end(&lista_de_dormindo);
+  }
+  struct list_elem *aux2;
+  //uso list_empty para verificar se a lista esta vazia, ou seja o while vai rodar enquato tiver elementos na lista
+  while(aux != list_end(&lista_de_dormindo)){
+    //o list_entry vai pegar o elemento da lista e transformar em uma struct threads_dormindo (reconstitui a struct), e ai eu consigo acessar o campo hora_de_acordar
+    //salva isso numa variavel e comparar com a variavel ticks, que representa o tempo atual do sistema
+    struct threads_dormindo *thread_atual = list_entry (aux, struct threads_dormindo, elemento);
+    if(thread_atual->hora_de_acordar <= ticks){
+      //se a hora de acordar for menor ou igual ao ticks atual, entao a thread vai acordar
+      sema_up(&thread_atual->semaforo);
+      //importante remover a thread da lista
+      aux2 = aux;
+      aux = list_next(aux);
+      list_remove(aux2);
+    }else{
+    aux = list_next(aux);
+    }
+  }
   thread_tick ();
 }
 
