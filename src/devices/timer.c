@@ -7,6 +7,16 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+
+//struct que vai guardar as threads que vao entrar em sleep
+struct threads_dormindo{
+  struct list_elem elemento;
+  int64_t hora_de_acordar;
+  struct semaphore semaforo;
+};
+
+//uso static porque so vai ser usado nesse arquivo
+static struct list lista_de_dormindo;
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
