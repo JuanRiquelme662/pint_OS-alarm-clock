@@ -110,6 +110,8 @@ timer_sleep (int64_t ticks)
   ASSERT (intr_get_level () == INTR_ON); 
 
   tempo_total = start + ticks;
+  //desativa as interrupcoes para evitar que a thread seja acordada antes do tempo
+  enum intr_level old_level = intr_disable ();
 
   //vai dar o tempo que a thread precisa acordar, como se colocasse um "depertador"
   thread_dormindo.hora_de_acordar = tempo_total;
@@ -118,6 +120,8 @@ timer_sleep (int64_t ticks)
   //vou chamar a funcao list_push_back para colocar a thread no final da lista de threads que vao dormir
   list_push_back(&lista_de_dormindo, &thread_dormindo.elemento);
   sema_down(&thread_dormindo.semaforo);
+  //restaura o estado original das interrupcoes, para que a thread possa ser acordada
+  intr_set_level (old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
